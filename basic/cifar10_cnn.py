@@ -16,10 +16,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# GPU使用時のメモリ制限設定
+# GPU使用時のメモリ制限設定（メモリ不足エラーを防ぐ）
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
+        # GPU利用可能な場合は動的メモリ割り当てを有効化
         for gpu in gpus:
             tf.config.experimental.set_memory_growth(gpu, True)
     except RuntimeError as e:
@@ -27,8 +28,11 @@ if gpus:
 
 class CIFAR10Classifier:
     def __init__(self):
+        # 学習済みモデルを格納
         self.model = None
+        # 学習履歴（損失・精度の推移）を格納
         self.history = None
+        # CIFAR-10の10クラス名（予測結果の可視化で使用）
         self.class_names = [
             'airplane', 'automobile', 'bird', 'cat', 'deer',
             'dog', 'frog', 'horse', 'ship', 'truck'
@@ -38,14 +42,16 @@ class CIFAR10Classifier:
         """CIFAR-10データの読み込みと前処理"""
         print("CIFAR-10データセットを読み込み中...")
         
-        # データセット読み込み
+        # CIFAR-10データセット読み込み（32x32カラー画像、10クラス分類）
         (x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
         
-        # データの正規化 (0-255 → 0-1)
+        # ピクセル値の正規化: 0-255の整数値 → 0-1の浮動小数点値
+        # ニューラルネットワークの学習を安定化させる
         x_train = x_train.astype('float32') / 255.0
         x_test = x_test.astype('float32') / 255.0
         
-        # ラベルをワンホットエンコーディング
+        # ラベルをワンホットエンコーディング: 数値 → [0,0,1,0,0,0,0,0,0,0]形式
+        # 多クラス分類での損失関数計算に必要
         y_train = keras.utils.to_categorical(y_train, 10)
         y_test = keras.utils.to_categorical(y_test, 10)
         
@@ -59,22 +65,29 @@ class CIFAR10Classifier:
         print("CNNモデルを構築中...")
         
         model = keras.Sequential([
-            # 第1畳み込み層
+            # 第1畳み込み層: 32個のフィルタ、3x3カーネル、入力形状=(32,32,3)
+            # RGBカラー画像（3チャンネル）から特徴を抽出
             layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
+            # 最大プーリング: 2x2で特徴マップを縮小 (32x32 → 16x16)
             layers.MaxPooling2D((2, 2)),
             
-            # 第2畳み込み層
+            # 第2畳み込み層: 64個のフィルタでより複雑な特徴を学習
             layers.Conv2D(64, (3, 3), activation='relu'),
+            # 再度プーリング (16x16 → 8x8)
             layers.MaxPooling2D((2, 2)),
             
-            # 第3畳み込み層
+            # 第3畳み込み層: さらに高次の特徴を抽出
             layers.Conv2D(64, (3, 3), activation='relu'),
             
-            # 全結合層への展開
+            # 全結合層への変換
+            # 2D特徴マップを1Dベクトルに平坦化
             layers.Flatten(),
+            # 隠れ層: 64ニューロン
             layers.Dense(64, activation='relu'),
-            layers.Dropout(0.5),  # 過学習防止
-            layers.Dense(10, activation='softmax')  # 10クラス分類
+            # ドロップアウト: 50%のニューロンをランダムに無効化（過学習防止）
+            layers.Dropout(0.5),
+            # 出力層: 10クラス分類、ソフトマックス活性化
+            layers.Dense(10, activation='softmax')
         ])
         
         # モデルのコンパイル

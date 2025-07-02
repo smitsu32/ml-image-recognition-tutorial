@@ -18,25 +18,28 @@ import os
 
 class MNISTClassifier:
     def __init__(self):
+        # 学習済みモデルを格納
         self.model = None
+        # 学習履歴（損失・精度の推移）を格納
         self.history = None
     
     def load_and_preprocess_data(self):
         """MNISTデータの読み込みと前処理"""
         print("MNISTデータセットを読み込み中...")
         
-        # データセット読み込み
+        # データセット読み込み（Kerasに内蔵のMNISTデータセット）
         (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
         
-        # データの正規化 (0-255 → 0-1)
+        # データの正規化: ピクセル値を0-255から0-1の範囲に変換
         x_train = x_train.astype('float32') / 255.0
         x_test = x_test.astype('float32') / 255.0
         
-        # CNNのために次元を追加 (28, 28) → (28, 28, 1)
+        # CNNのためにチャンネル次元を追加: (28, 28) → (28, 28, 1)
+        # -1は自動的にバッチサイズを計算
         x_train = x_train.reshape(-1, 28, 28, 1)
         x_test = x_test.reshape(-1, 28, 28, 1)
         
-        # ラベルをワンホットエンコーディング
+        # ラベルをワンホットエンコーディング: 数値 → [0,0,1,0,0,0,0,0,0,0]形式
         y_train = keras.utils.to_categorical(y_train, 10)
         y_test = keras.utils.to_categorical(y_test, 10)
         
@@ -50,19 +53,26 @@ class MNISTClassifier:
         print("シンプルな多層パーセプトロンモデルを構築中...")
         
         model = keras.Sequential([
+            # 2D画像を1Dベクトルに変換: (28,28,1) → (784,)
             layers.Flatten(input_shape=(28, 28, 1)),
+            # 全結合層: 128個のニューロン、ReLU活性化関数
             layers.Dense(128, activation='relu'),
+            # ドロップアウト: 過学習防止のため20%のニューロンをランダムに無効化
             layers.Dropout(0.2),
+            # 出力層: 10クラス分類、ソフトマックス活性化関数
             layers.Dense(10, activation='softmax')
         ])
         
+        # モデルのコンパイル設定
         model.compile(
-            optimizer='adam',
-            loss='categorical_crossentropy',
-            metrics=['accuracy']
+            optimizer='adam',                    # 最適化アルゴリズム（適応的学習率）
+            loss='categorical_crossentropy',     # 多クラス分類用の損失関数
+            metrics=['accuracy']                 # 評価指標（精度）
         )
         
+        # モデルの構造を表示（層の情報、パラメータ数など）
         model.summary()
+        # インスタンス変数に保存
         self.model = model
         return model
     
@@ -71,19 +81,26 @@ class MNISTClassifier:
         print("CNNモデルを構築中...")
         
         model = keras.Sequential([
-            # 第1畳み込み層
+            # 第1畳み込み層: 32個のフィルタ、3x3カーネル、ReLU活性化
             layers.Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+            # 最大プーリング層: 2x2で特徴マップを半分のサイズに
             layers.MaxPooling2D(pool_size=(2, 2)),
             
-            # 第2畳み込み層
+            # 第2畳み込み層: 64個のフィルタでより複雑な特徴を抽出
             layers.Conv2D(64, kernel_size=(3, 3), activation='relu'),
+            # 再度プーリングでサイズを縮小
             layers.MaxPooling2D(pool_size=(2, 2)),
             
-            # 全結合層
+            # 全結合層への変換
+            # 2D特徴マップを1Dベクトルに変換
             layers.Flatten(),
+            # ドロップアウト（25%）: 過学習防止
             layers.Dropout(0.25),
+            # 隠れ層: 128ニューロン
             layers.Dense(128, activation='relu'),
+            # より強いドロップアウト（50%）
             layers.Dropout(0.5),
+            # 出力層: 10クラス分類
             layers.Dense(10, activation='softmax')
         ])
         
@@ -101,18 +118,20 @@ class MNISTClassifier:
         """モデルの学習"""
         print(f"モデルの学習を開始します... (エポック数: {epochs})")
         
-        # コールバック設定
+        # コールバック設定（学習の自動制御）
         callbacks = [
+            # 早期停止: 検証精度が3エポック改善しなければ学習停止
             keras.callbacks.EarlyStopping(
-                monitor='val_accuracy',
-                patience=3,
-                restore_best_weights=True
+                monitor='val_accuracy',    # 監視する指標
+                patience=3,                # 改善しないエポック数の上限
+                restore_best_weights=True  # 最良の重みを復元
             ),
+            # 学習率スケジューリング: 損失が改善しない場合学習率を下げる
             keras.callbacks.ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=0.5,
-                patience=2,
-                min_lr=0.0001
+                monitor='val_loss',        # 監視する指標
+                factor=0.5,                # 学習率を半分に
+                patience=2,                # 2エポック改善しなければ実行
+                min_lr=0.0001             # 最小学習率
             )
         ]
         

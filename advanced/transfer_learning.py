@@ -21,17 +21,23 @@ import seaborn as sns
 
 class TransferLearningClassifier:
     def __init__(self, base_model_name='VGG16', num_classes=10):
+        # 使用する事前学習済みモデル名
         self.base_model_name = base_model_name
+        # 分類するクラス数（出力層のニューロン数）
         self.num_classes = num_classes
+        # 完成したモデル（ベースモデル + カスタム層）
         self.model = None
+        # 事前学習済みベースモデル
         self.base_model = None
+        # 学習履歴
         self.history = None
         
-        # 利用可能な事前学習済みモデル
+        # 利用可能な事前学習済みモデルの辞書
+        # ImageNetデータセット（100万枚以上の画像）で学習済み
         self.available_models = {
-            'VGG16': VGG16,
-            'ResNet50': ResNet50,
-            'MobileNetV2': MobileNetV2
+            'VGG16': VGG16,                # 深いCNN、高精度だが重い
+            'ResNet50': ResNet50,          # 残差接続で勾配消失を解決
+            'MobileNetV2': MobileNetV2     # 軽量モデル、モバイルアプリ向け
         }
     
     def create_base_model(self, input_shape=(224, 224, 3)):
@@ -43,14 +49,15 @@ class TransferLearningClassifier:
         
         base_model_class = self.available_models[self.base_model_name]
         
-        # ImageNetで事前学習済みのモデルを読み込み（最上位層は除く）
+        # ImageNetで事前学習済みのモデルを読み込み
         base_model = base_model_class(
-            weights='imagenet',
-            include_top=False,
-            input_shape=input_shape
+            weights='imagenet',           # ImageNetで学習済みの重みを使用
+            include_top=False,            # 最終層（分類層）を除外
+            input_shape=input_shape       # 入力画像のサイズ指定
         )
         
-        # 最初は事前学習済みの重みを固定
+        # 最初は事前学習済みの重みを固定（学習しない）
+        # 新しいタスク用の上位層のみを学習させる
         base_model.trainable = False
         
         print(f"ベースモデル: {base_model.name}")
@@ -66,15 +73,23 @@ class TransferLearningClassifier:
         # ベースモデルの作成
         base_model = self.create_base_model(input_shape)
         
-        # カスタムトップ層の追加
+        # カスタムトップ層の追加（新しいタスク用の分類器）
         model = keras.Sequential([
+            # 事前学習済みベースモデル（特徴抽出器として使用）
             base_model,
+            # グローバル平均プーリング: 各特徴マップの平均値を取得
             layers.GlobalAveragePooling2D(),
+            # バッチ正規化: 学習の安定化
             layers.BatchNormalization(),
+            # 第1全結合層: 512ニューロン
             layers.Dense(512, activation='relu'),
+            # ドロップアウト: 過学習防止（50%）
             layers.Dropout(0.5),
+            # 第2全結合層: 256ニューロン
             layers.Dense(256, activation='relu'),
+            # より軽いドロップアウト（30%）
             layers.Dropout(0.3),
+            # 出力層: 指定クラス数で分類
             layers.Dense(self.num_classes, activation='softmax')
         ])
         

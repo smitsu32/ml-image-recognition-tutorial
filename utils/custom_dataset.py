@@ -32,13 +32,21 @@ class CustomImageDataset:
             image_size (tuple): 画像のリサイズサイズ
             batch_size (int): バッチサイズ
         """
+        # データセットのルートディレクトリ
         self.data_dir = Path(data_dir)
+        # 画像のリサイズサイズ（縦、横）
         self.image_size = image_size
+        # 学習時のバッチサイズ
         self.batch_size = batch_size
+        # クラス名のリスト
         self.classes = []
+        # クラス名からインデックスへのマッピング
         self.class_to_idx = {}
+        # 画像ファイルパスのリスト
         self.images = []
+        # 各画像に対応するラベル（数値）のリスト
         self.labels = []
+        # ラベルエンコーダー（文字列ラベルを数値に変換）
         self.label_encoder = LabelEncoder()
         
     def scan_directory(self):
@@ -61,12 +69,14 @@ class CustomImageDataset:
         if not self.data_dir.exists():
             raise FileNotFoundError(f"データディレクトリが見つかりません: {self.data_dir}")
         
-        # サポートされる画像形式
+        # サポートされる画像ファイル形式の拡張子
         supported_formats = {'.jpg', '.jpeg', '.png', '.bmp', '.gif'}
         
-        # クラスディレクトリの取得
+        # ディレクトリ内のクラスフォルダを取得
         class_dirs = [d for d in self.data_dir.iterdir() if d.is_dir()]
+        # クラス名をアルファベット順でソート
         self.classes = sorted([d.name for d in class_dirs])
+        # クラス名から数値インデックスへのマッピングを作成
         self.class_to_idx = {cls: idx for idx, cls in enumerate(self.classes)}
         
         print(f"発見されたクラス数: {len(self.classes)}")
@@ -78,6 +88,7 @@ class CustomImageDataset:
             class_idx = self.class_to_idx[class_name]
             
             # クラスディレクトリ内の画像ファイルを取得
+            # サポートされる形式のみをフィルタリング
             image_files = [
                 f for f in class_dir.iterdir() 
                 if f.is_file() and f.suffix.lower() in supported_formats
@@ -95,20 +106,21 @@ class CustomImageDataset:
     def load_and_preprocess_image(self, image_path):
         """画像の読み込みと前処理"""
         try:
-            # 画像の読み込み
+            # PIL（Python Imaging Library）で画像を読み込み
             image = Image.open(image_path)
             
-            # RGBに変換（必要に応じて）
+            # RGBカラーモードに変換（グレースケールやPNG透明度対応）
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
-            # リサイズ
+            # 指定サイズにリサイズ（アスペクト比は無視してフィット）
             image = image.resize(self.image_size)
             
-            # NumPy配列に変換
+            # NumPy配列に変換（数値計算のため）
             image_array = np.array(image, dtype=np.float32)
             
-            # 正規化 (0-255 → 0-1)
+            # 正規化: ピクセル値を0-255から0-1の範囲に変換
+            # ニューラルネットワークの学習を安定化させる
             image_array = image_array / 255.0
             
             return image_array
