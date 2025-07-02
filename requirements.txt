@@ -1,0 +1,28 @@
+# 機械学習・画像認識用ライブラリ
+tensorflow>=2.12.0
+keras>=2.12.0
+
+# 科学計算・データ処理
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+
+# 画像処理
+Pillow>=8.3.0
+opencv-python>=4.5.0
+
+# 可視化
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# ユーティリティ
+tqdm>=4.62.0
+pathlib2>=2.3.0
+
+# Jupyter Notebook用（オプション）
+jupyter>=1.0.0
+ipykernel>=6.0.0
+ipywidgets>=7.6.0
+
+# GPU使用時（オプション）
+# tensorflow-gpu>=2.12.0  # GPU版が必要な場合はコメントアウトを解除
